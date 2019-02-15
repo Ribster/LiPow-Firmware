@@ -35,11 +35,7 @@ extern "C" {
 #include "stm32g0xx_ll_rcc.h"
 #include "stm32g0xx_ll_tim.h"
 
-#if defined(USE_STM32G081B_EVAL_REVA) ||defined(USE_STM32G081B_EVAL_REVB) || defined(USE_STM32G081B_EVAL_REVC)
-#include "stm32g081b_eval_pwr.h"
-#else
-#include "usbpd_bsp_pwr.h"
-#endif
+#include "stm32g071c_lipow_pwr.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/

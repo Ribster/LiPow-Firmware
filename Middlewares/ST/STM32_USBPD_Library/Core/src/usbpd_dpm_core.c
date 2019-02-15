@@ -188,8 +188,6 @@ USBPD_ParamsTypeDef   DPM_Params[USBPD_PORT_COUNT];
   */
 USBPD_StatusTypeDef USBPD_DPM_Init(void)
 {
-  uint32_t stack_dynamemsize;
-
   /* Check the lib selected */
   if( USBPD_TRUE != USBPD_PE_CheckLIB(_LIB_ID))
   {
@@ -199,7 +197,7 @@ USBPD_StatusTypeDef USBPD_DPM_Init(void)
   /* to get how much memory are dynamically allocated by the stack
      the memory return is corresponding to 2 ports so if the application
      managed only one port divide the value return by 2                   */
-  stack_dynamemsize = USBPD_PE_GetMemoryConsumption();
+  uint32_t stack_dynamemsize = USBPD_PE_GetMemoryConsumption();
 
   /* done to avoid warning */
   stack_dynamemsize--;
@@ -237,6 +235,7 @@ USBPD_StatusTypeDef USBPD_DPM_Init(void)
   /* Enable CAD on Port 0 */
   USBPD_CAD_PortEnable(USBPD_PORT_0, USBPD_CAD_ENABLE);
 
+  // Cable detection thread -- the policy engine thread (PE) is created in the CAD callback.
   osThreadDef(CAD, USBPD_CAD_Task, osPriorityRealtime, 0, 300);
   if((DPM_Thread_Table[USBPD_THREAD_CAD] = osThreadCreate(osThread(CAD), NULL)) == NULL)
   {
@@ -260,7 +259,7 @@ USBPD_StatusTypeDef USBPD_DPM_Init(void)
 
 
   /* Start the scheduler */
-  osKernelStart();
+  // osKernelStart();
 
   return USBPD_OK;
 

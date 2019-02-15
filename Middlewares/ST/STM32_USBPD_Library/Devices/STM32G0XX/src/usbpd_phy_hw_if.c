@@ -55,7 +55,7 @@ void USBPD_HW_IF_GlobalHwInit(void)
   BSP_PWR_VBUSInit(0, POWER_ROLE_DUAL);
   BSP_PWR_VBUSInit(1, POWER_ROLE_SINK);
 #else
-  BSP_PWR_VBUSInit(USBPD_PORT_COUNT);
+  // BSP_PWR_VBUSInit(USBPD_PORT_COUNT);
 #endif
 }
 

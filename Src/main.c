@@ -173,7 +173,7 @@ int main(void) {
 
 	/* USER CODE BEGIN Init */
 	 /* Global Init of USBPD HW */
-  	// USBPD_HW_IF_GlobalHwInit();
+  	USBPD_HW_IF_GlobalHwInit();
 	/* USER CODE END Init */
 
 	/* Configure the system clock */
@@ -222,6 +222,11 @@ int main(void) {
 
 	osThreadDef(battery_connection, vBattery_Connection_State, BATTERY_TASK_PRIORITY, 0, vBattery_State_STACK_SIZE);
 	batteryTaskHandle = osThreadCreate(osThread(battery_connection), NULL);
+
+	// START THE DEVICE POLICY MANAGER
+	USBPD_DPM_Init();
+
+
 	/* USER CODE END RTOS_THREADS */
 
 	/* USER CODE BEGIN RTOS_QUEUES */
