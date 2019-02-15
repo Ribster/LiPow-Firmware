@@ -204,20 +204,9 @@ USBPD_StatusTypeDef USBPD_DPM_Init(void)
   /* done to avoid warning */
   stack_dynamemsize--;
 
-#if defined(_GUI_INTERFACE)
-  /* Perform copy from FLASH to RAM */
-  memcpy(DPM_Settings, DPM_FLASH_Settings, (sizeof(USBPD_SettingsTypeDef) * USBPD_PORT_COUNT));
-  memcpy(DPM_USER_Settings, DPM_USER_FLASH_Settings, (sizeof(USBPD_USER_SettingsTypeDef) * USBPD_PORT_COUNT));
-#ifdef _VDM
-  memcpy(DPM_VDM_Settings, DPM_VDM_FLASH_Settings, (sizeof(USBPD_VDM_SettingsTypeDef) * USBPD_PORT_COUNT));
-#endif /* _VDM */
-#endif /* _GUI_INTERFACE */
 
   /* Variable to be sure that DPM is correctly initialized */
   DPM_Params[USBPD_PORT_0].DPM_Initialized = USBPD_FALSE;
-#if USBPD_PORT_COUNT == 2
-  DPM_Params[USBPD_PORT_1].DPM_Initialized = USBPD_FALSE;
-#endif /* USBPD_PORT_COUNT == 2 */
 
   /* check the stack settings */
   DPM_Params[USBPD_PORT_0].PE_SpecRevision  = DPM_Settings[USBPD_PORT_0].PE_SpecRevision;
@@ -226,84 +215,18 @@ USBPD_StatusTypeDef USBPD_DPM_Init(void)
   DPM_Params[USBPD_PORT_0].ActiveCCIs       = CCNONE;
   DPM_Params[USBPD_PORT_0].VconnCCIs        = CCNONE;
   DPM_Params[USBPD_PORT_0].VconnStatus      = USBPD_FALSE;
-#if USBPD_PORT_COUNT == 2
-  DPM_Params[USBPD_PORT_1].PE_SpecRevision  = DPM_Settings[USBPD_PORT_1].PE_SpecRevision;
-  DPM_Params[USBPD_PORT_1].PE_PowerRole     = DPM_Settings[USBPD_PORT_1].PE_DefaultRole;
-  DPM_Params[USBPD_PORT_1].PE_SwapOngoing   = 0;
-  DPM_Params[USBPD_PORT_1].ActiveCCIs       = CCNONE;
-  DPM_Params[USBPD_PORT_1].VconnCCIs        = CCNONE;
-  DPM_Params[USBPD_PORT_1].VconnStatus      = USBPD_FALSE;
-#endif /* USBPD_PORT_COUNT == 2 */
 
-#if defined(_TRACE) || defined(_GUI_INTERFACE)
-  /* Initialise the TRACE */
-  USBPD_TRACE_Init();
-#endif /* _TRACE || _GUI_INTERFACE */
 
-#if defined(USBPD_TCPM_MODULE_ENABLED)
-#ifndef _RTOS
-  USBPD_TIM_Init();
-#endif /* !_RTOS*/
-
-#if !defined(USBPD_STUSB1605)
-  USBPD_TCPCI_Init();
-#endif /* !USBPD_STUSB1605 */
-  TCPC_DrvTypeDef* tcpc_driver;
-  USBPD_TCPCI_GetDevicesDrivers(USBPD_PORT_0, &tcpc_driver);
-  USBPD_TCPM_HWInit(USBPD_PORT_0, DPM_Settings[USBPD_PORT_0].CAD_RoleToggle, &DPM_Params[USBPD_PORT_0], (USBPD_CAD_Callbacks *)&CAD_cbs, tcpc_driver);
-#if USBPD_PORT_COUNT == 2
-  USBPD_TCPCI_GetDevicesDrivers(USBPD_PORT_1, &tcpc_driver);
-  USBPD_TCPM_HWInit(USBPD_PORT_1, DPM_Settings[USBPD_PORT_1].CAD_RoleToggle, &DPM_Params[USBPD_PORT_1], (USBPD_CAD_Callbacks *)&CAD_cbs, tcpc_driver);
-#endif /* USBPD_PORT_COUNT == 2 */
-#else
+// #if not defined(USBPD_TCPM_MODULE_ENABLED)
   /* CAD SET UP : Port 0 */
   CHECK_CAD_FUNCTION_CALL(USBPD_CAD_Init(USBPD_PORT_0, (USBPD_CAD_Callbacks*)&CAD_cbs, (USBPD_SettingsTypeDef *)&DPM_Settings[USBPD_PORT_0], &DPM_Params[USBPD_PORT_0]));
-#if USBPD_PORT_COUNT == 2
-  CHECK_CAD_FUNCTION_CALL(USBPD_CAD_Init(USBPD_PORT_1, (USBPD_CAD_Callbacks*)&CAD_cbs, (USBPD_SettingsTypeDef *)&DPM_Settings[USBPD_PORT_1], &DPM_Params[USBPD_PORT_1]));
-#endif /* USBPD_PORT_COUNT == 2 */
-#endif /* USBPD_TCPM_MODULE_ENABLED */
 
   /* PE SET UP : Port 0 */
   CHECK_PE_FUNCTION_CALL(USBPD_PE_Init(USBPD_PORT_0, (USBPD_SettingsTypeDef *)&DPM_Settings[USBPD_PORT_0], &DPM_Params[USBPD_PORT_0], &dpmCallbacks));
-#if USBPD_PORT_COUNT == 2
-  CHECK_PE_FUNCTION_CALL(USBPD_PE_Init(USBPD_PORT_1, (USBPD_SettingsTypeDef *)&DPM_Settings[USBPD_PORT_1], &DPM_Params[USBPD_PORT_1], &dpmCallbacks));
-#endif /* USBPD_PORT_COUNT == 2 */
 
-#ifdef _VDM
-  if(USBPD_TRUE == DPM_Settings[USBPD_PORT_0].PE_VDMSupport)
-  {
-    if (USBPD_OK != USBPD_VDM_UserInit(USBPD_PORT_0, (USBPD_VDM_SettingsTypeDef *)&DPM_VDM_Settings[USBPD_PORT_0], &DPM_Params[USBPD_PORT_0]))
-    {
-      return USBPD_ERROR;
-    }
-  }
-#if USBPD_PORT_COUNT == 2
-  if(USBPD_TRUE == DPM_Settings[USBPD_PORT_1].PE_VDMSupport)
-  {
-    if (USBPD_OK != USBPD_VDM_UserInit(USBPD_PORT_1, (USBPD_VDM_SettingsTypeDef *)&DPM_VDM_Settings[USBPD_PORT_1], &DPM_Params[USBPD_PORT_1]))
-    {
-      return USBPD_ERROR;
-    }
-  }
-#endif /* USBPD_PORT_COUNT == 2 */
-#elif defined(_VCONN_SUPPORT)
-  if (USBPD_OK != USBPD_VDM_UserInit(USBPD_PORT_0, NULL, NULL))
-  {
-    return USBPD_ERROR;
-  }
-#if USBPD_PORT_COUNT == 2
-  if (USBPD_OK != USBPD_VDM_UserInit(USBPD_PORT_1, NULL, NULL))
-  {
-    return USBPD_ERROR;
-  }
-#endif /* USBPD_PORT_COUNT == 2 */
-#endif /* _VDM */
 
   /* DPM is correctly initialized */
   DPM_Params[USBPD_PORT_0].DPM_Initialized = USBPD_TRUE;
-#if USBPD_PORT_COUNT == 2
-  DPM_Params[USBPD_PORT_1].DPM_Initialized = USBPD_TRUE;
-#endif /* USBPD_PORT_COUNT == 2 */
 
   /* Initialize */
   if (USBPD_OK != USBPD_DPM_UserInit())
@@ -311,26 +234,8 @@ USBPD_StatusTypeDef USBPD_DPM_Init(void)
     return USBPD_ERROR;
   }
 
-#ifdef _RTOS
-#if defined(USBPD_TCPM_MODULE_ENABLED)
-  osMessageQDef(MsgBox, TCPM_ALARMBOX_MESSAGES_MAX, uint16_t);
-
-#if defined(_TRACE)
-  osThreadDef(ALERTTask, USBPD_ALERT_Task, osPriorityRealtime, 0, 240);
-#else
-  osThreadDef(ALERTTask, USBPD_ALERT_Task, osPriorityRealtime, 0, 120);
-#endif /* _TRACE */
-  AlarmMsgBox = osMessageCreate(osMessageQ(MsgBox), NULL);
-  if (NULL == osThreadCreate(osThread(ALERTTask), &AlarmMsgBox))
-  {
-    return USBPD_ERROR;
-  }
-#else
   /* Enable CAD on Port 0 */
   USBPD_CAD_PortEnable(USBPD_PORT_0, USBPD_CAD_ENABLE);
-#if USBPD_PORT_COUNT == 2
-  USBPD_CAD_PortEnable(USBPD_PORT_1, USBPD_CAD_ENABLE);
-#endif /* USBPD_PORT_COUNT == 2 */
 
   osThreadDef(CAD, USBPD_CAD_Task, osPriorityRealtime, 0, 300);
   if((DPM_Thread_Table[USBPD_THREAD_CAD] = osThreadCreate(osThread(CAD), NULL)) == NULL)
@@ -339,27 +244,13 @@ USBPD_StatusTypeDef USBPD_DPM_Init(void)
   }
   CADQueueId = osMessageCreate(osMessageQ(queueCAD), NULL);
 
-#endif /* USBPD_TCPM_MODULE_ENABLED */
 
-#if defined(_TRACE) || defined(_GUI_INTERFACE)
-  osThreadDef(TRA_TX, USBPD_TRACE_TX_Task, osPriorityLow, 0, configMINIMAL_STACK_SIZE * 2);
-  if(NULL == osThreadCreate(osThread(TRA_TX), NULL))
-  {
-    return USBPD_ERROR;
-  }
-#endif /* _TRACE || _GUI_INTERFACE */
 
   /* Create the queue corresponding to PE task */
   PEQueueId[0] = osMessageCreate(osMessageQ(queuePE), NULL);
-#if USBPD_PORT_COUNT == 2
-  PEQueueId[1] = osMessageCreate(osMessageQ(queuePE), NULL);
-#endif /* USBPD_PORT_COUNT == 2 */
 
   /* PE task to be created on attachment */
   DPM_Thread_Table[USBPD_THREAD_PORT_0] = NULL;
-#if USBPD_PORT_COUNT == 2
-  DPM_Thread_Table[USBPD_THREAD_PORT_1] = NULL;
-#endif /* USBPD_PORT_COUNT == 2 */
 
 #if defined(_OPTIM_CONSO)
   extern void   SystemClock_Config_8Mhz(void);
@@ -367,59 +258,12 @@ USBPD_StatusTypeDef USBPD_DPM_Init(void)
   SystemClock_Config_8Mhz();
 #endif /*_OPTIM_CONSO_*/
 
-#if defined(USBPD_TCPM_MODULE_ENABLED)
-  USBPD_TCPI_AlertInit();
-#endif /* USBPD_TCPM_MODULE_ENABLED */
 
   /* Start the scheduler */
   osKernelStart();
 
   return USBPD_OK;
-#else /* !_RTOS*/
 
-#if !defined(USBPD_TCPM_MODULE_ENABLED)
-  /* Enable CAD on Port 0 */
-  USBPD_CAD_PortEnable(USBPD_PORT_0, USBPD_CAD_ENABLE);
-
-#ifdef _SIMULATOR
-  return USBPD_OK;
-}
-
-void USBPD_DPM_Run(void)
-{
-#endif
-  extern uint32_t HAL_GetTick(void);
-  extern void  HAL_Delay(volatile uint32_t Delay);
-
-#endif /* USBPD_TCPM_MODULE_ENABLED */
-#ifndef _SIMULATOR
-  do
-  {
-#endif
-#if defined(USBPD_TCPM_MODULE_ENABLED)
-#else /* !USBPD_TCPM_MODULE_ENABLED */
-      USBPD_CAD_Process();
-#ifndef _SIMULATOR
-      //HAL_Delay(1);
-#endif
-#endif /* USBPD_TCPM_MODULE_ENABLED */
-#ifdef _DRP
-    USBPD_PE_StateMachine_DRP(USBPD_PORT_0);
-#elif _SRC
-    USBPD_PE_StateMachine_SRC(USBPD_PORT_0);
-#elif _SNK
-    USBPD_PE_StateMachine_SNK(USBPD_PORT_0);
-#endif /* _DRP */
-
-    USBPD_DPM_UserExecute(NULL);
-#if defined(_TRACE) || defined(_GUI_INTERFACE)
-    USBPD_TRACE_TX_Process();
-#endif /* _TRACE || _GUI_INTERFACE */
-#ifndef _SIMULATOR
-    }
-  while(1);
-#endif
-#endif /* _RTOS */
 }
 
 /**
