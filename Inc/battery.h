@@ -26,8 +26,6 @@ extern "C" {
 
 #define CELL_CONNECTION_ERROR 1
 
-void vCreateBatteryTask( uint16_t usStackSize, unsigned portBASE_TYPE uxPriority );
-
 uint8_t Get_XT60_Connection_State(void);
 
 uint8_t Get_Balance_Connection_State(void);
@@ -37,5 +35,8 @@ uint8_t Get_Number_Of_Cells(void);
 uint8_t Get_Balancing_State(void);
 
 uint8_t Get_Charging_State(void);
+
+void vBattery_Connection_State(void const *pvParameters);
+
 
 #endif /* BATTERY_H_ */

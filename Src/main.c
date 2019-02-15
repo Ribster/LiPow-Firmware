@@ -91,6 +91,9 @@ DMA_HandleTypeDef hdma_usart1_tx;
 DMA_HandleTypeDef hdma_usart1_rx;
 
 osThreadId defaultTaskHandle;
+osThreadId ledTaskHandle;
+osThreadId adcTaskHandle;
+osThreadId batteryTaskHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -107,7 +110,7 @@ void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
-void vLED_Blinky(void *pvParameters);
+void vLED_Blinky(void const *pvParameters);
 
 /*
  * Register commands that can be used with FreeRTOS+CLI through the UDP socket.
@@ -119,6 +122,38 @@ extern void vRegisterCLICommands(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+// Heres the main function from the UCPD example provided by ST
+#ifdef BOBBY_BOO // don't define this and it won't compile :)
+int example_code_main(void)
+{
+  /* Get back current CPU clock config */
+  SystemCoreClockUpdate();
+
+  if(SystemCoreClock != 64000000)
+  {
+    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+    HAL_Init();
+
+    /* Configure the system clock @ CPU max */
+    SystemClock_Config();
+  }
+
+  /* ## Backup register access ## */
+  RCC->APBENR1 |= RCC_APBENR1_PWREN;
+  LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_CRC);
+
+  /* Global Init of USBPD HW */
+  USBPD_HW_IF_GlobalHwInit();
+
+  /* Initialize the Device Policy Manager */
+  if( USBPD_ERROR == USBPD_DPM_Init())
+  {
+    /* error the RTOS can't be started  */
+    while(1);
+  }
+}
+#endif
 
 /* USER CODE END 0 */
 
@@ -137,14 +172,14 @@ int main(void) {
 	HAL_Init();
 
 	/* USER CODE BEGIN Init */
-
+	 /* Global Init of USBPD HW */
+  	// USBPD_HW_IF_GlobalHwInit();
 	/* USER CODE END Init */
 
 	/* Configure the system clock */
 	SystemClock_Config();
 
 	/* USER CODE BEGIN SysInit */
-
 	/* USER CODE END SysInit */
 
 	/* Initialize all configured peripherals */
@@ -154,28 +189,12 @@ int main(void) {
 	MX_I2C1_Init();
 	MX_TIM7_Init();
 	MX_USART1_UART_Init();
+
 	/* USER CODE BEGIN 2 */
-
-	/* Create the task, storing the handle. */
-	xTaskCreate(vLED_Blinky, /* Function that implements the task. */
-	(const char* const ) "blink_led", /* Text name for the task. */
-	configMINIMAL_STACK_SIZE, /* Stack size in words, not bytes. */
-	0, /* Parameter passed into the task. */
-	LED_TASK_PRIORITY, /* Priority at which the task is created. */
-	0); /* Used to pass out the created task's handle. */
-
-	/* Start the adc task */
-	vCreateADCTask(vRead_ADC_STACK_SIZE, ADC_TASK_PRIORITY);
-
-	/* Start the battery task */
-	vCreateBatteryTask(vBattery_State_STACK_SIZE, BATTERY_TASK_PRIORITY);
-
 	/* Start the Command Line Interface on UART1 */
 	vUARTCommandConsoleStart(vcliSTACK_SIZE, UART_CLI_TASK_PRIORITY);
-
 	/* Register commands with the FreeRTOS+CLI command interpreter. */
 	vRegisterCLICommands();
-
 	/* USER CODE END 2 */
 
 	/* USER CODE BEGIN RTOS_MUTEX */
@@ -190,13 +209,19 @@ int main(void) {
 	/* start timers, add new ones, ... */
 	/* USER CODE END RTOS_TIMERS */
 
-	/* Create the thread(s) */
-	/* definition and creation of defaultTask */
+	/* Create idle thread */
 	osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
 	defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
 	/* USER CODE BEGIN RTOS_THREADS */
-	/* add threads, ... */
+	osThreadDef(blink_led, vLED_Blinky, LED_TASK_PRIORITY, 0, configMINIMAL_STACK_SIZE);
+	ledTaskHandle = osThreadCreate(osThread(blink_led), NULL);
+
+	osThreadDef(read_adc, vRead_ADC, ADC_TASK_PRIORITY, 0, vRead_ADC_STACK_SIZE);
+	adcTaskHandle = osThreadCreate(osThread(read_adc), NULL);
+
+	osThreadDef(battery_connection, vBattery_Connection_State, BATTERY_TASK_PRIORITY, 0, vBattery_State_STACK_SIZE);
+	batteryTaskHandle = osThreadCreate(osThread(battery_connection), NULL);
 	/* USER CODE END RTOS_THREADS */
 
 	/* USER CODE BEGIN RTOS_QUEUES */
@@ -543,7 +568,7 @@ static void MX_GPIO_Init(void) {
 
 /* USER CODE BEGIN 4 */
 
-void vLED_Blinky(void *pvParameters) {
+void vLED_Blinky(void const *pvParameters) {
 	TickType_t xDelay = 500 / portTICK_PERIOD_MS;
 
 	for (;;) {
