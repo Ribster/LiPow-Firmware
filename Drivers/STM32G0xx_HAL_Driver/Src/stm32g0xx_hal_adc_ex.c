@@ -61,7 +61,6 @@
 /* Calibration time max = 116 / fADC (refer to datasheet)                     */
 /*                      = 193 024 CPU cycles                                  */
 #define ADC_CALIBRATION_TIMEOUT         (193024UL)   /*!< ADC calibration time-out value (unit: CPU cycles) */
-
 /**
   * @}
   */
